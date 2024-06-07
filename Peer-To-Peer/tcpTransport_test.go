@@ -7,10 +7,14 @@ import (
 
 func TestTCPTransport(t *testing.T) {
 
-	listenAddr := ":4000"
-	transport := NewTCPTransport(listenAddr)
+	tcpConfig := p2p.TCPTransportConfig{
+		ListenAddress: ":3000",
+		HandshakeFunc: p2p.NOPHandshakeFunc,
+	}
 
-	assert.Equal(t, transport.listenAddress, listenAddr)
+	transport := NewTCPTransport(tcpConfig)
+
+	assert.Equal(t, transport.ListenAddress, listenAddr)
 
 	//Server
 	assert.Nil(t, transport.ListenAndAccept())
