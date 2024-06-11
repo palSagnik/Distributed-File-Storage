@@ -30,19 +30,19 @@ func TestStorageCRD(t *testing.T) {
 	key := "mygreatestgoal"
 	data := []byte("this will work")
 
-	// Create Operation
+	// Create
 	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
 		t.Error(err)
 	}
 
 
-	// Present Operation
+	// Present
 	if ok := s.Present(key); !ok {
 		t.Errorf("expected to have key %s, but not found", key)
 	}	
 
 
-	// Read Operation
+	// Read
 	r, err := s.Read(key)
 	if err != nil {
 		t.Error(err)
@@ -55,7 +55,7 @@ func TestStorageCRD(t *testing.T) {
 	fmt.Println(string(b))
 
 
-	// Delete Operation
+	// Delete
 	if err := s.Delete(key); err != nil {
 		t.Error(err)
 	}
