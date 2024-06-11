@@ -6,25 +6,6 @@ import (
 	"io"
 	"testing"
 )
-
-func TestStorageDeleteKey(t *testing.T) {
-	config := StorageConfig{
-		PathTransformation: CASPathTransformFunc,
-	}
-
-	s := NewStorage(config)
-	key := "mygreatestgoal"
-	data := []byte("this will work")
-
-	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
-		t.Error(err)
-	}
-
-	if err := s.Delete(key); err != nil {
-		t.Error(err)
-	}
-
-}
 func TestPathTransformFunc(t *testing.T) {
 	key := "mygreatestgoal"
 	pathkey := CASPathTransformFunc(key)
@@ -40,7 +21,7 @@ func TestPathTransformFunc(t *testing.T) {
 	fmt.Println(pathkey.PathName)
 }
 
-func TestStorageWriteAndRead(t *testing.T) {
+func TestStorageCRD(t *testing.T) {
 	config := StorageConfig{
 		PathTransformation: CASPathTransformFunc,
 	}
@@ -49,19 +30,33 @@ func TestStorageWriteAndRead(t *testing.T) {
 	key := "mygreatestgoal"
 	data := []byte("this will work")
 
+	// Create Operation
 	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
 		t.Error(err)
 	}
 
+
+	// Present Operation
+	if ok := s.Present(key); !ok {
+		t.Errorf("expected to have key %s, but not found", key)
+	}	
+
+
+	// Read Operation
 	r, err := s.Read(key)
 	if err != nil {
 		t.Error(err)
 	}
-
 	b, _ := io.ReadAll(r)
 	if string(b) != string(data) {
 		t.Errorf("wanted %s, got %s", data, b)
 	}
 
 	fmt.Println(string(b))
+
+
+	// Delete Operation
+	if err := s.Delete(key); err != nil {
+		t.Error(err)
+	}
 }

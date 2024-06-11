@@ -11,6 +11,9 @@ import (
 	"strings"
 )
 
+//defining the default root folder
+const defaultRootFolder = "networkStorage"
+
 func CASPathTransformFunc(key string) PathKey {
 	hash := sha1.Sum([]byte(key))
 	hashString := hex.EncodeToString(hash[:])
@@ -31,7 +34,7 @@ func CASPathTransformFunc(key string) PathKey {
 	return PathKey{
 		PathName: strings.Join(paths, "/"),
 		Filename: hashString,
-		Root: 	  paths[0],
+		PathRoot: 	  paths[0],
 	}
 }
 
@@ -40,18 +43,24 @@ type PathTransformFunc func(string) PathKey
 type PathKey struct {
 	PathName string
 	Filename string
-	Root     string
+	PathRoot     string
 }
 
 func (p PathKey) CompletePath() string {
 	return fmt.Sprintf("%s/%s", p.PathName, p.Filename)
 }
 
-var DefaultPathTransformFunc = func(key string) string {
-	return key
+var DefaultPathTransformFunc = func(key string) PathKey {
+	return PathKey{
+		PathName: key,
+		Filename: key,
+	}
 }
 
 type StorageConfig struct {
+
+	//Root is folder name of the root containing the files and folder on the disk
+	Root 			   string
 	PathTransformation PathTransformFunc
 }
 
@@ -60,6 +69,16 @@ type Storage struct {
 }
 
 func NewStorage(config StorageConfig) *Storage {
+	
+	// assigning default values
+	if config.PathTransformation == nil {
+		config.PathTransformation = DefaultPathTransformFunc
+	}
+
+	if config.Root == "" {
+		config.Root = defaultRootFolder
+	}
+
 	return &Storage{
 		StorageConfig: config,
 	}
@@ -67,7 +86,7 @@ func NewStorage(config StorageConfig) *Storage {
 
 func (s *Storage) Present(key string) bool {
 	pk := s.PathTransformation(key)
-	fullpath := pk.CompletePath()
+	fullpath := fmt.Sprintf("%s/%s", s.Root, pk.CompletePath())
 
 	_, err := os.Stat(fullpath)
 	if err != nil {
@@ -89,7 +108,9 @@ func (s *Storage) Delete(key string) error {
 	defer func() {
 		log.Printf("deleted [%s] from disk", pk.Filename)
 	}()
-	if err := os.RemoveAll(pk.Root); err != nil {
+
+	completePath := fmt.Sprintf("%s/%s", s.Root, pk.PathRoot)
+	if err := os.RemoveAll(completePath); err != nil {
 		return err
 	}
 
@@ -113,7 +134,7 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 func (s *Storage) readStream(key string) (io.ReadCloser, error) {
 	pk := s.PathTransformation(key)
 
-	completePath := pk.CompletePath()
+	completePath := fmt.Sprintf("%s/%s", s.Root, pk.CompletePath())
 	return os.Open(completePath)
 
 }
@@ -121,13 +142,13 @@ func (s *Storage) readStream(key string) (io.ReadCloser, error) {
 func (s *Storage) writeStream(key string, r io.Reader) error {
 
 	pathKey := s.PathTransformation(key)
-	pathName := pathKey.PathName
+	pathName := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
 
 	if err := os.MkdirAll(pathName, os.ModePerm); err != nil {
 		return err
 	}
 
-	completePath := pathKey.CompletePath()
+	completePath := fmt.Sprintf("%s/%s", s.Root, pathKey.CompletePath())
 	f, err := os.Create(completePath)
 	if err != nil {
 		return err
