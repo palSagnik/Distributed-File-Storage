@@ -6,6 +6,7 @@ import (
 	"io"
 	"testing"
 )
+
 func TestPathTransformFunc(t *testing.T) {
 	key := "mygreatestgoal"
 	pathkey := CASPathTransformFunc(key)
@@ -25,10 +26,11 @@ func TestStorageCRD(t *testing.T) {
 	config := StorageConfig{
 		PathTransformation: CASPathTransformFunc,
 	}
-
 	s := NewStorage(config)
-	key := "mygreatestgoal"
-	data := []byte("this will work")
+	defer teardown(t, s)
+
+	key := "fooandbar"
+	data := []byte("this will work bruh")
 
 	// Create
 	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
@@ -57,6 +59,12 @@ func TestStorageCRD(t *testing.T) {
 
 	// Delete
 	if err := s.Delete(key); err != nil {
+		t.Error(err)
+	}
+}
+
+func teardown(t *testing.T, s *Storage) {
+	if err := s.Clear(); err != nil {
 		t.Error(err)
 	}
 }

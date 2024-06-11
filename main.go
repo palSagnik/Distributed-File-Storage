@@ -1,36 +1,30 @@
 package main
 
 import (
-	"fmt"
 	"log"
-
 	p2p "github.com/palSagnik/Distributed-File-Storage/Peer-To-Peer"
 )
 
-func PeerStatus(p2p.Peer) error {
-	//return fmt.Errorf("failed Peer Status func")
-	return nil
-}
-
 func main() {
-
+	
+	// TCP Configuration
 	tcpConfig := p2p.TCPTransportConfig{
 		ListenAddress: ":3000",
 		HandshakeFunc: p2p.NOPHandshakeFunc,
-		Decoder:       p2p.DefaultDecoder{},
-		PeerStatus:    PeerStatus,
+		Decoder: p2p.DefaultDecoder{},
+		// Need On Peer
 	}
-
+	
 	transport := p2p.NewTCPTransport(tcpConfig)
 
-	go func() {
-		for {
-			msg := <-transport.Consume()
-			fmt.Printf("%+v\n", msg)
-		}
-	}()
+	fsConfig := FileServerConfig {
+		StorageRoot: ":3000-Storage",
+		PathTransformation: CASPathTransformFunc,
+		Transport: transport,
+	}
 
-	if err := transport.ListenAndAccept(); err != nil {
+	fs := NewFileServer(fsConfig)
+	if err := fs.Start(); err != nil {
 		log.Fatal(err)
 	}
 

@@ -100,6 +100,11 @@ func (s *Storage) Present(key string) bool {
 	return true
 }
 
+// Clearing the entire storage along with the root folder
+func (s *Storage) Clear() error {
+	return os.RemoveAll(s.Root)
+}
+
 // This delete function for now is not taking in account
 // the probabibility of partial hash collision
 func (s *Storage) Delete(key string) error {
@@ -116,6 +121,12 @@ func (s *Storage) Delete(key string) error {
 
 	return nil
 }
+
+
+func (s *Storage) Write(key string, r io.Reader) error {
+	return s.writeStream(key, r)
+}
+
 
 func (s *Storage) Read(key string) (io.Reader, error) {
 	f, err := s.readStream(key)
@@ -138,6 +149,7 @@ func (s *Storage) readStream(key string) (io.ReadCloser, error) {
 	return os.Open(completePath)
 
 }
+
 
 func (s *Storage) writeStream(key string, r io.Reader) error {
 
