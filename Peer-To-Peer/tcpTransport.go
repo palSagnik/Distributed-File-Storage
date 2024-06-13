@@ -26,6 +26,15 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	}
 }
 
+func (p *TCPPeer) Send(data []byte) error {
+	_, err := p.connection.Write(data)
+	return err
+}
+
+func (p *TCPPeer) RemoteAddr() net.Addr {
+	return p.connection.RemoteAddr()
+}
+
 // Close implements the closure of the peer interface
 func (p *TCPPeer) Close() error {
 	return p.connection.Close()
@@ -67,6 +76,17 @@ func (t *TCPTransport) Close() error {
 	return t.listener.Close()
 }
 
+func (t *TCPTransport) Dial(address string) error {
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		return err
+	}
+
+	go t.handleConnection(conn, true) // because we are dialing: outbound -> true
+	return nil
+}
+
+
 func (t *TCPTransport) ListenAndAccept() error {
 
 	listener, err := net.Listen("tcp", t.ListenAddress)
@@ -92,16 +112,14 @@ func (t *TCPTransport) acceptLoop() {
 	if errors.Is(err, net.ErrClosed) {
 		return
 	}
-
 	if err != nil {
 		fmt.Println("TCP Connection Error")
 	}
 
-	fmt.Printf("New incoming connection %+v\n", conn)
-	go t.handleConnection(conn)
+	go t.handleConnection(conn, false) // because we are accepting the connection
 }
 
-func (t *TCPTransport) handleConnection(conn net.Conn) {
+func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 	var err error
 
 	// after generating any kind of error the handleConnection function exits
@@ -112,7 +130,7 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 		conn.Close()
 	}()
 
-	peer := NewTCPPeer(conn, true)
+	peer := NewTCPPeer(conn, outbound)
 	if err := t.HandshakeFunc(peer); err != nil {
 		conn.Close()
 		fmt.Printf("TCP Handshake Error: %s\n", err)

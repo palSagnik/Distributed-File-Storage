@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"sync"
+	"time"
 
 	p2p "github.com/palSagnik/Distributed-File-Storage/Peer-To-Peer"
 )
@@ -10,12 +14,17 @@ type FileServerConfig struct {
 	StorageRoot        string
 	PathTransformation PathTransformFunc
 	Transport          p2p.Transport
+	NodeList 		   []string
 }
 
 type FileServer struct {
 	FileServerConfig
-	storage     *Storage
-	quitChannel chan struct{}
+
+	lockPeer 		sync.Mutex
+	peers 			map[string]p2p.Peer
+
+	storage     	*Storage
+	quitChannel 	chan struct{}
 }
 
 func NewFileServer(config FileServerConfig) *FileServer {
@@ -28,7 +37,30 @@ func NewFileServer(config FileServerConfig) *FileServer {
 		FileServerConfig: config,
 		storage:          NewStorage(storageConfig),
 		quitChannel:      make(chan struct{}),
+		peers:			  make(map[string]p2p.Peer),
 	}
+}
+
+type Payload struct {
+	Key 	string
+	Data 	[]byte
+}
+
+func (fs *FileServer) StoreData(key string, r io.Reader) error {
+
+
+	return nil
+}
+
+
+func (fs *FileServer) PeerStatus(p p2p.Peer) error {
+	fs.lockPeer.Lock()
+	defer fs.lockPeer.Unlock()
+
+	fs.peers[p.RemoteAddr().String()] = p
+	log.Printf("Connected with remote %s", p.RemoteAddr())
+
+	return nil
 }
 
 func (fs *FileServer) Start() error {
@@ -36,6 +68,7 @@ func (fs *FileServer) Start() error {
 		return err
 	}
 
+	fs.listedNodeNetwork()
 	fs.loop()
 
 	return nil
@@ -60,4 +93,25 @@ func (fs *FileServer) loop() {
 			return
 		}
 	}
+}
+
+func (fs *FileServer) listedNodeNetwork() error {
+
+	for _, addr := range fs.NodeList {
+
+		if len(addr) == 0 {
+			continue
+		}
+		go func(addr string) {
+			log.Println("Attempting to connect", addr)
+			if err := fs.Transport.Dial(addr); err != nil {
+				log.Println("Dial Error ",  err)
+			} else {
+				log.Printf("Connected to %s", addr)
+			}
+		} (addr)
+		time.Sleep(time.Second)
+	}
+
+	return nil;
 }
