@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"io"
 	"log"
@@ -48,10 +50,22 @@ type Payload struct {
 
 func (fs *FileServer) StoreData(key string, r io.Reader) error {
 
+	buffer := new(bytes.Buffer)
+	tee := io.TeeReader(r, buffer)
 
-	return nil
+	// Store data in the disk
+	if err := fs.storage.Write(key, tee); err != nil {
+		return err
+	}
+
+	p := &Payload{
+		Key: key,
+		Data: buffer.Bytes(),
+	}
+
+	fmt.Printf("Broadcasting: %+v\n", buffer.Bytes())
+	return fs.broadcast(p)
 }
-
 
 func (fs *FileServer) PeerStatus(p p2p.Peer) error {
 	fs.lockPeer.Lock()
@@ -88,7 +102,11 @@ func (fs *FileServer) loop() {
 	for {
 		select {
 		case msg:= <- fs.Transport.Consume():
-			fmt.Println(msg)
+			var p Payload
+			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&p); err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%+v\n", p)
 		case <- fs.quitChannel:
 			return
 		}
@@ -114,4 +132,14 @@ func (fs *FileServer) listedNodeNetwork() error {
 	}
 
 	return nil;
+}
+
+func (fs *FileServer) broadcast(payload *Payload) error {
+	
+	peers := []io.Writer{}
+	for _, peer := range fs.peers {
+			peers = append(peers, peer)
+		}
+	multiwrite := io.MultiWriter(peers...)
+	return gob.NewEncoder(multiwrite).Encode(payload)
 }

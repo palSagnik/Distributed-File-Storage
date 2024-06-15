@@ -11,7 +11,7 @@ import (
 type TCPPeer struct {
 
 	// This is the connection of the Peer
-	connection net.Conn
+	net.Conn
 
 	// if we dial and retrieve a connection => outbound == true
 	// if we accept and retrieve a connection => outbound == false
@@ -21,25 +21,15 @@ type TCPPeer struct {
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 
 	return &TCPPeer{
-		connection: conn,
+		Conn: conn,
 		outbound:   outbound,
 	}
 }
 
 func (p *TCPPeer) Send(data []byte) error {
-	_, err := p.connection.Write(data)
+	_, err := p.Conn.Write(data)
 	return err
 }
-
-func (p *TCPPeer) RemoteAddr() net.Addr {
-	return p.connection.RemoteAddr()
-}
-
-// Close implements the closure of the peer interface
-func (p *TCPPeer) Close() error {
-	return p.connection.Close()
-}
-
 // This struct type defines the configuration for a particular transport.
 // ListenAddress -> The address of the transport to connect to.
 // HandSHakeFunc -> For initiating Handshake as we see in a TCP model.

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"log"
+	"time"
 
 	p2p "github.com/palSagnik/Distributed-File-Storage/Peer-To-Peer"
 )
@@ -38,6 +40,14 @@ func main() {
 		log.Fatal(fs1.Start())
 	}()
 	
-	fs2.Start()
+	time.Sleep(1 * time.Second)
+	go fs2.Start()
+	time.Sleep(1 * time.Second)
 
+	key := "thisisatest"
+	data := bytes.NewReader([]byte("hello this is me"))
+
+	fs2.StoreData(key, data)
+	
+	select {}
 }
