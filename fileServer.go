@@ -43,7 +43,12 @@ func NewFileServer(config FileServerConfig) *FileServer {
 	}
 }
 
-type Payload struct {
+type Message struct {
+	From string
+	Payload any
+}
+
+type MessageData struct {
 	Key 	string
 	Data 	[]byte
 }
@@ -58,13 +63,16 @@ func (fs *FileServer) StoreData(key string, r io.Reader) error {
 		return err
 	}
 
-	p := &Payload{
+	p := &MessageData{
 		Key: key,
 		Data: buffer.Bytes(),
 	}
 
-	fmt.Printf("Broadcasting: %+v\n", buffer.Bytes())
-	return fs.broadcast(p)
+	fmt.Printf("Broadcasting: %+v\n", buffer.String())
+	return fs.broadcast(&Message{
+		From: "todo",
+		Payload: p,
+	})
 }
 
 func (fs *FileServer) PeerStatus(p p2p.Peer) error {
@@ -102,16 +110,25 @@ func (fs *FileServer) loop() {
 	for {
 		select {
 		case msg:= <- fs.Transport.Consume():
-			var p Payload
-			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&p); err != nil {
+			var m Message
+			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&m); err != nil {
 				log.Fatal(err)
 			}
-			fmt.Printf("%+v\n", p)
+			
+			if err := fs.handleMessage(&m); err != nil {
+				log.Fatal(err)
+			}
 		case <- fs.quitChannel:
 			return
 		}
 	}
 }
+
+func (fs *FileServer) handleMessage(msg *Message) error {
+
+	
+}
+
 
 func (fs *FileServer) listedNodeNetwork() error {
 
@@ -134,12 +151,12 @@ func (fs *FileServer) listedNodeNetwork() error {
 	return nil;
 }
 
-func (fs *FileServer) broadcast(payload *Payload) error {
+func (fs *FileServer) broadcast(msg *Message) error {
 	
 	peers := []io.Writer{}
 	for _, peer := range fs.peers {
 			peers = append(peers, peer)
 		}
 	multiwrite := io.MultiWriter(peers...)
-	return gob.NewEncoder(multiwrite).Encode(payload)
+	return gob.NewEncoder(multiwrite).Encode(msg.Payload)
 }
