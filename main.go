@@ -40,14 +40,14 @@ func main() {
 		log.Fatal(fs1.Start())
 	}()
 	
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 	go fs2.Start()
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	key := "thisisatest"
 	data := bytes.NewReader([]byte("hello this is me"))
 
 	fs2.StoreData(key, data)
 	
-	select {}
+	select{}
 }
