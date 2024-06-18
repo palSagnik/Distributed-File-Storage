@@ -148,10 +148,16 @@ func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 
 		rpc.From = conn.RemoteAddr().String()
 
-		peer.Wg.Add(1)
-		fmt.Println("Waiting till stream to be done")
+		if rpc.Stream {
+			peer.Wg.Add(1)
+			log.Printf("[%s] Stream Detected\n", rpc.From)
+			peer.Wg.Wait()
+			log.Printf("[%s] Stream Closed\n", rpc.From)
+			log.Println("Beginning normal read....")
+			continue
+		}
+		
 		t.rpcChannel <- rpc
-		peer.Wg.Wait()
-		fmt.Println("Stream done, continuing normal read")
+		
 	}
 }

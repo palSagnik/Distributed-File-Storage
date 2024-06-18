@@ -44,10 +44,24 @@ func main() {
 	go fs2.Start()
 	time.Sleep(2 * time.Second)
 
-	key := "thisisatest"
-	data := bytes.NewReader([]byte("hello this is me"))
+	for i := 0; i < 10; i++ {
+		key := "thisisatest"
+		data := bytes.NewReader([]byte("hello this is me"))
+		fs2.Store(key, data)
 
-	fs2.StoreData(key, data)
-	
+		time.Sleep(1 * time.Second)
+	}
+
+	// r, err := fs2.Get("key")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// b, err := io.ReadAll(r)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// fmt.Println(string(b))
 	select{}
 }
