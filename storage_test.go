@@ -33,10 +33,9 @@ func TestStorageCRD(t *testing.T) {
 	data := []byte("this will work bruh")
 
 	// Create
-	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+	if _, err := s.writeStream(key, bytes.NewReader(data)); err != nil {
 		t.Error(err)
 	}
-
 
 	// Present
 	if ok := s.Present(key); !ok {
@@ -45,7 +44,7 @@ func TestStorageCRD(t *testing.T) {
 
 
 	// Read
-	r, err := s.Read(key)
+	_, r, err := s.Read(key)
 	if err != nil {
 		t.Error(err)
 	}

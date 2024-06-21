@@ -17,7 +17,7 @@ type TCPPeer struct {
 	// if we dial and retrieve a connection => outbound == true
 	// if we accept and retrieve a connection => outbound == false
 	outbound bool
-	Wg *sync.WaitGroup
+	wg *sync.WaitGroup
 }
 
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
@@ -25,10 +25,13 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	return &TCPPeer{
 		Conn: conn,
 		outbound:   outbound,
-		Wg: &sync.WaitGroup{},
+		wg: &sync.WaitGroup{},
 	}
 }
 
+func (p *TCPPeer) CloseStream() {
+	p.wg.Done()
+}
 func (p *TCPPeer) Send(data []byte) error {
 	_, err := p.Conn.Write(data)
 	return err
@@ -57,6 +60,11 @@ func NewTCPTransport(config TCPTransportConfig) *TCPTransport {
 		TCPTransportConfig: config,
 		rpcChannel:         make(chan RPC),
 	}
+}
+
+// Addr implements transport interface which will return the address of the transport
+func (t * TCPTransport) Addr() string {
+	return t.ListenAddress
 }
 
 // Consume implements transport interface which will only return
@@ -139,8 +147,8 @@ func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 	}
 
 	//Reading the connection loop after the handshake and if peerStatus doesnt fail
-	rpc := RPC{}
 	for {
+		rpc := RPC{}
 		if err := t.Decoder.Decode(conn, &rpc); err != nil {
 			fmt.Printf("TCP Decoding Error: %s\n", err)
 			continue
@@ -149,11 +157,10 @@ func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 		rpc.From = conn.RemoteAddr().String()
 
 		if rpc.Stream {
-			peer.Wg.Add(1)
-			log.Printf("[%s] Stream Detected\n", rpc.From)
-			peer.Wg.Wait()
-			log.Printf("[%s] Stream Closed\n", rpc.From)
-			log.Println("Beginning normal read....")
+			peer.wg.Add(1)
+			fmt.Printf("[%s] Stream Detected\n", rpc.From)
+			peer.wg.Wait()
+			fmt.Printf("[%s] Stream Closed\n", rpc.From)
 			continue
 		}
 		

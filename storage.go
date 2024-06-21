@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
@@ -9,9 +8,11 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	enc "github.com/palSagnik/Distributed-File-Storage/Encoding"
 )
 
-//defining the default root folder
+// defining the default root folder
 const defaultRootFolder = "networkStorage"
 
 func CASPathTransformFunc(key string) PathKey {
@@ -34,7 +35,7 @@ func CASPathTransformFunc(key string) PathKey {
 	return PathKey{
 		PathName: strings.Join(paths, "/"),
 		Filename: hashString,
-		PathRoot: 	  paths[0],
+		PathRoot: paths[0],
 	}
 }
 
@@ -43,7 +44,7 @@ type PathTransformFunc func(string) PathKey
 type PathKey struct {
 	PathName string
 	Filename string
-	PathRoot     string
+	PathRoot string
 }
 
 func (p PathKey) CompletePath() string {
@@ -60,7 +61,7 @@ var DefaultPathTransformFunc = func(key string) PathKey {
 type StorageConfig struct {
 
 	//Root is folder name of the root containing the files and folder on the disk
-	Root 			   string
+	Root               string
 	PathTransformation PathTransformFunc
 }
 
@@ -69,7 +70,7 @@ type Storage struct {
 }
 
 func NewStorage(config StorageConfig) *Storage {
-	
+
 	// assigning default values
 	if config.PathTransformation == nil {
 		config.PathTransformation = DefaultPathTransformFunc
@@ -122,54 +123,59 @@ func (s *Storage) Delete(key string) error {
 	return nil
 }
 
-
 func (s *Storage) Write(key string, r io.Reader) (int64, error) {
 	return s.writeStream(key, r)
 }
 
-
-func (s *Storage) Read(key string) (io.Reader, error) {
-	f, err := s.readStream(key)
+func (s *Storage) WriteDecrypt(encKey []byte, key string, r io.Reader) (int64, error) {
+	f, err := s.openFile(key)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	defer f.Close()
-
-	buffer := new(bytes.Buffer)
-	_, err = io.Copy(buffer, f)
-
-	return buffer, err
+	n, err := enc.StreamDecrypt(encKey, r, f)
+	return int64(n), err
 }
 
-func (s *Storage) readStream(key string) (io.ReadCloser, error) {
-	pk := s.PathTransformation(key)
-
-	completePath := fmt.Sprintf("%s/%s", s.Root, pk.CompletePath())
-	return os.Open(completePath)
-
-}
-
-
-func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
-
+func (s *Storage) openFile(key string) (*os.File, error) {
 	pathKey := s.PathTransformation(key)
 	pathName := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
 
 	if err := os.MkdirAll(pathName, os.ModePerm); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	completePath := fmt.Sprintf("%s/%s", s.Root, pathKey.CompletePath())
-	f, err := os.Create(completePath)
+	return os.Create(completePath)
+
+}
+func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
+
+	f, err := s.openFile(key)
 	if err != nil {
 		return 0, err
 	}
 
-	n, err := io.Copy(f, r)
+	return io.Copy(f, r)
+}
+
+func (s *Storage) Read(key string) (int64, io.Reader, error) {
+	return s.readStream(key)
+}
+
+func (s *Storage) readStream(key string) (int64, io.ReadCloser, error) {
+	pk := s.PathTransformation(key)
+	completePath := fmt.Sprintf("%s/%s", s.Root, pk.CompletePath())
+
+	file, err := os.Open(completePath)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
-	return n, nil
+	fi, err := file.Stat()
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return fi.Size(), file, nil
 }
