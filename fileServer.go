@@ -298,17 +298,6 @@ func (fs *FileServer) broadcast(msg *Message) error {
 	return nil
 }
 
-func (fs *FileServer) stream(msg *Message) error {
-
-	peers := []io.Writer{}
-	for _, peer := range fs.peers {
-		peer.Send([]byte{p2p.TypeStream})
-		peers = append(peers, peer)
-	}
-	multiwrite := io.MultiWriter(peers...)
-	return gob.NewEncoder(multiwrite).Encode(msg)
-}
-
 func init() {
 	gob.Register(MessageStoreFile{})
 	gob.Register(MessageGetFile{})
