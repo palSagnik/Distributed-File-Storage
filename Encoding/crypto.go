@@ -3,9 +3,23 @@ package enc
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/md5"
 	"crypto/rand"
+	"encoding/hex"
 	"io"
 )
+
+func GenerateID() string {
+	buffer := make([]byte, 32)
+	io.ReadFull(rand.Reader, buffer)
+	return hex.EncodeToString(buffer)
+}
+
+func HashKey (key string) string {
+	hash := md5.Sum([]byte(key))
+	return hex.EncodeToString(hash[:])
+}
+
 func NewEncryptionKey() []byte {
 
 	keyBuffer := make([]byte, 32)

@@ -56,7 +56,7 @@ func main() {
 		data := bytes.NewReader([]byte("hello this is me"))
 		fs3.Store(key, data)
 
-		if err := fs3.storage.Delete(key); err != nil {
+		if err := fs3.storage.Delete(fs3.ID, key); err != nil {
 			log.Fatal(err)
 		}
 		r, err := fs3.Get(key)

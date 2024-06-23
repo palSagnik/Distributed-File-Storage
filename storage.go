@@ -85,9 +85,9 @@ func NewStorage(config StorageConfig) *Storage {
 	}
 }
 
-func (s *Storage) Present(key string) bool {
+func (s *Storage) Present(id string, key string) bool {
 	pk := s.PathTransformation(key)
-	fullpath := fmt.Sprintf("%s/%s", s.Root, pk.CompletePath())
+	fullpath := fmt.Sprintf("%s/%s/%s", s.Root, id, pk.CompletePath())
 
 	_, err := os.Stat(fullpath)
 	if err != nil {
@@ -108,14 +108,14 @@ func (s *Storage) Clear() error {
 
 // This delete function for now is not taking in account
 // the probabibility of partial hash collision
-func (s *Storage) Delete(key string) error {
+func (s *Storage) Delete(id string, key string) error {
 	pk := s.PathTransformation(key)
 
 	defer func() {
 		log.Printf("deleted [%s] from disk", pk.Filename)
 	}()
 
-	completePath := fmt.Sprintf("%s/%s", s.Root, pk.PathRoot)
+	completePath := fmt.Sprintf("%s/%s/%s", s.Root, id, pk.PathRoot)
 	if err := os.RemoveAll(completePath); err != nil {
 		return err
 	}
@@ -123,12 +123,12 @@ func (s *Storage) Delete(key string) error {
 	return nil
 }
 
-func (s *Storage) Write(key string, r io.Reader) (int64, error) {
-	return s.writeStream(key, r)
+func (s *Storage) Write(id string, key string, r io.Reader) (int64, error) {
+	return s.writeStream(id, key, r)
 }
 
-func (s *Storage) WriteDecrypt(encKey []byte, key string, r io.Reader) (int64, error) {
-	f, err := s.openFile(key)
+func (s *Storage) WriteDecrypt(id string, encKey []byte, key string, r io.Reader) (int64, error) {
+	f, err := s.openFile(id, key)
 	if err != nil {
 		return 0, err
 	}
@@ -137,21 +137,21 @@ func (s *Storage) WriteDecrypt(encKey []byte, key string, r io.Reader) (int64, e
 	return int64(n), err
 }
 
-func (s *Storage) openFile(key string) (*os.File, error) {
+func (s *Storage) openFile(id string, key string) (*os.File, error) {
 	pathKey := s.PathTransformation(key)
-	pathName := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
+	pathName := fmt.Sprintf("%s/%s/%s", s.Root, id, pathKey.PathName)
 
 	if err := os.MkdirAll(pathName, os.ModePerm); err != nil {
 		return nil, err
 	}
 
-	completePath := fmt.Sprintf("%s/%s", s.Root, pathKey.CompletePath())
+	completePath := fmt.Sprintf("%s/%s/%s", s.Root, id, pathKey.CompletePath())
 	return os.Create(completePath)
 
 }
-func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
+func (s *Storage) writeStream(id string, key string, r io.Reader) (int64, error) {
 
-	f, err := s.openFile(key)
+	f, err := s.openFile(id, key)
 	if err != nil {
 		return 0, err
 	}
@@ -159,13 +159,13 @@ func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
 	return io.Copy(f, r)
 }
 
-func (s *Storage) Read(key string) (int64, io.Reader, error) {
-	return s.readStream(key)
+func (s *Storage) Read(id string, key string) (int64, io.Reader, error) {
+	return s.readStream(id, key)
 }
 
-func (s *Storage) readStream(key string) (int64, io.ReadCloser, error) {
+func (s *Storage) readStream(id string, key string) (int64, io.ReadCloser, error) {
 	pk := s.PathTransformation(key)
-	completePath := fmt.Sprintf("%s/%s", s.Root, pk.CompletePath())
+	completePath := fmt.Sprintf("%s/%s/%s", s.Root, id, pk.CompletePath())
 
 	file, err := os.Open(completePath)
 	if err != nil {

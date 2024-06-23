@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"testing"
+
+	enc "github.com/palSagnik/Distributed-File-Storage/Encoding"
 )
 
 func TestPathTransformFunc(t *testing.T) {
@@ -27,24 +29,25 @@ func TestStorageCRD(t *testing.T) {
 		PathTransformation: CASPathTransformFunc,
 	}
 	s := NewStorage(config)
+	id := enc.GenerateID()
 	defer teardown(t, s)
 
 	key := "fooandbar"
 	data := []byte("this will work bruh")
 
 	// Create
-	if _, err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+	if _, err := s.writeStream(id, key, bytes.NewReader(data)); err != nil {
 		t.Error(err)
 	}
 
 	// Present
-	if ok := s.Present(key); !ok {
+	if ok := s.Present(id, key); !ok {
 		t.Errorf("expected to have key %s, but not found", key)
 	}	
 
 
 	// Read
-	_, r, err := s.Read(key)
+	_, r, err := s.Read(id, key)
 	if err != nil {
 		t.Error(err)
 	}
@@ -57,7 +60,7 @@ func TestStorageCRD(t *testing.T) {
 
 
 	// Delete
-	if err := s.Delete(key); err != nil {
+	if err := s.Delete(id, key); err != nil {
 		t.Error(err)
 	}
 }
